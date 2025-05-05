@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> {
             const Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
-                'Lập trình viên: Nguyễn Phạm Hùng',
+                'Nhà phát triển: Nguyễn Phạm Hùng, Nguyễn Thị Ánh Ngọc',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey,

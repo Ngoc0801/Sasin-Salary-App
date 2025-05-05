@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     Text(
-                      'Tác giả: Nguyễn Phạm Hùng',
+                      'Tác giả: Nguyễn Phạm Hùng, Nguyễn Thị Ánh Ngọc',
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     Text(
