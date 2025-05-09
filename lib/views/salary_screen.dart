@@ -26,17 +26,21 @@ class SalaryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final salaryViewModel = Provider.of<SalaryViewModel>(context);
-    final settingsViewModel = Provider.of<SettingsViewModel>(
-      context,
-      listen: false,
-    );
+    final settingsViewModel = Provider.of<SettingsViewModel>(context);
 
-    // Đồng bộ vị trí với loại công việc từ settings
+    // Đồng bộ vị trí và mức lương tùy chỉnh từ settings
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (settingsViewModel.employee.jobType == 'kitchen') {
         salaryViewModel.setPosition(Position.kitchen);
-      } else {
+        salaryViewModel.setCustomSalary(null); // Xóa custom salary nếu có
+      } else if (settingsViewModel.employee.jobType == 'service') {
         salaryViewModel.setPosition(Position.waiter);
+        salaryViewModel.setCustomSalary(null); // Xóa custom salary nếu có
+      } else if (settingsViewModel.employee.jobType == 'custom' &&
+          settingsViewModel.employee.customSalaryEnabled &&
+          settingsViewModel.employee.customSalary != null) {
+        salaryViewModel.setPosition(Position.custom);
+        salaryViewModel.setCustomSalary(settingsViewModel.employee.customSalary);
       }
     });
 
@@ -125,21 +129,28 @@ class SalaryScreen extends StatelessWidget {
                       onChanged: (value) {
                         if (value != null) {
                           salaryViewModel.setPosition(value);
+                          if (value != Position.custom) {
+                            salaryViewModel.setCustomSalary(null); // Xóa custom salary khi chọn vị trí khác
+                          } else if (settingsViewModel.employee.customSalaryEnabled &&
+                              settingsViewModel.employee.customSalary != null) {
+                            salaryViewModel.setCustomSalary(settingsViewModel.employee.customSalary);
+                          }
                         }
                       },
-                      items:
-                          Position.values
-                              .map(
-                                (position) => DropdownMenuItem(
-                                  value: position,
-                                  child: Text(
-                                    position == Position.kitchen
-                                        ? 'Bếp'
-                                        : 'Phục vụ',
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                      items: Position.values
+                          .map(
+                            (position) => DropdownMenuItem(
+                              value: position,
+                              child: Text(
+                                position == Position.kitchen
+                                    ? 'Bếp'
+                                    : position == Position.waiter
+                                        ? 'Phục vụ'
+                                        : 'Tùy chỉnh',
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ],
                 ),
@@ -197,6 +208,24 @@ class SalaryScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (salaryViewModel.selectedPosition == Position.custom &&
+                        settingsViewModel.employee.customSalaryEnabled &&
+                        settingsViewModel.employee.customSalary != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Mức lương tùy chỉnh:',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          Text(
+                            '${settingsViewModel.employee.customSalary?.toInt()} VNĐ/giờ',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -230,6 +259,10 @@ class SalaryScreen extends StatelessWidget {
                           if (detail['overtimeSalary'] > 0)
                             Text(
                               'Tăng Ca (22h-23h): ${detail['overtimeSalary'].toInt()} VNĐ',
+                            ),
+                          if (detail['holidaySalary'] > 0)
+                            Text(
+                              'Ngày lễ: ${detail['holidaySalary'].toInt()} VNĐ',
                             ),
                           const Divider(),
                           Text(

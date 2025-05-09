@@ -16,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _employeeIdController = TextEditingController();
+  final TextEditingController _customSalaryController = TextEditingController(); // Controller cho mức lương
   DateTime? _selectedDateOfBirth;
 
   @override
@@ -23,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _employeeIdController.dispose();
+    _customSalaryController.dispose(); // Dispose controller mới
     super.dispose();
   }
 
@@ -54,6 +56,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Cập nhật giá trị ban đầu cho _customSalaryController
+    final settingsViewModel = Provider.of<SettingsViewModel>(context, listen: false);
+    _customSalaryController.text = settingsViewModel.employee.customSalary?.toString() ?? '';
+  }
+
+  @override
   Widget build(BuildContext context) {
     final settingsViewModel = Provider.of<SettingsViewModel>(context);
 
@@ -81,18 +91,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => _pickImage(settingsViewModel),
                   child: CircleAvatar(
                     radius: 50,
-                    backgroundImage:
-                        settingsViewModel.employee.profileImagePath != null
-                            ? FileImage(
-                              File(
-                                settingsViewModel.employee.profileImagePath!,
-                              ),
-                            )
-                            : null,
-                    child:
-                        settingsViewModel.employee.profileImagePath == null
-                            ? const Icon(Icons.person, size: 50)
-                            : null,
+                    backgroundImage: settingsViewModel.employee.profileImagePath != null
+                        ? FileImage(File(settingsViewModel.employee.profileImagePath!))
+                        : null,
+                    child: settingsViewModel.employee.profileImagePath == null
+                        ? const Icon(Icons.person, size: 50)
+                        : null,
                   ),
                 ),
               ),
@@ -132,10 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               GestureDetector(
                 onTap: () => _selectDateOfBirth(context),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(5),
@@ -160,6 +161,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) {
                       if (value != null) {
                         settingsViewModel.updateJobType(value);
+                        // Tắt tùy chọn tự điền khi chọn job type khác
+                        if (settingsViewModel.employee.customSalaryEnabled) {
+                          settingsViewModel.updateEmployee(
+                            customSalaryEnabled: false,
+                            customSalary: null,
+                          );
+                          _customSalaryController.clear(); // Xóa text trong controller
+                        }
                       }
                     },
                   ),
@@ -170,9 +179,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (value) {
                       if (value != null) {
                         settingsViewModel.updateJobType(value);
+                        // Tắt tùy chọn tự điền khi chọn job type khác
+                        if (settingsViewModel.employee.customSalaryEnabled) {
+                          settingsViewModel.updateEmployee(
+                            customSalaryEnabled: false,
+                            customSalary: null,
+                          );
+                          _customSalaryController.clear(); // Xóa text trong controller
+                        }
                       }
                     },
                   ),
+                  // Tùy chọn tự điền mức lương
+                  ListTile(
+                    title: const Text('Tự điền mức lương khác'),
+                    trailing: Switch(
+                      value: settingsViewModel.employee.customSalaryEnabled,
+                      onChanged: (value) {
+                        settingsViewModel.updateEmployee(customSalaryEnabled: value);
+                        // Tắt job type khác khi bật tùy chọn tự điền
+                        if (value && settingsViewModel.employee.jobType != 'custom') {
+                          settingsViewModel.updateJobType('custom');
+                        } else if (!value && settingsViewModel.employee.jobType == 'custom') {
+                          settingsViewModel.updateJobType('kitchen'); // Mặc định quay lại kitchen
+                          _customSalaryController.clear(); // Xóa text khi tắt
+                        }
+                        // Cập nhật controller khi thay đổi trạng thái
+                        if (!value) {
+                          settingsViewModel.updateEmployee(customSalary: null);
+                        } else {
+                          _customSalaryController.text = settingsViewModel.employee.customSalary?.toString() ?? '';
+                        }
+                      },
+                    ),
+                  ),
+                  if (settingsViewModel.employee.customSalaryEnabled)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      child: TextField(
+                        controller: _customSalaryController,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true), // Cho phép số thập phân
+                        decoration: const InputDecoration(
+                          hintText: 'Nhập mức lương (VND hoặc số/giờ)',
+                          border: OutlineInputBorder(),
+                          helperText: 'Ví dụ: 18000 hoặc 18000/giờ',
+                        ),
+                        onChanged: (value) {
+                          // Xử lý định dạng và lưu giá trị số
+                          String cleanedValue = value.replaceAll(RegExp(r'[^\d.]'), ''); // Lấy chỉ số và dấu chấm
+                          double? salary = double.tryParse(cleanedValue);
+                          if (salary != null && salary >= 0) {
+                            settingsViewModel.updateEmployee(customSalary: salary);
+                          } else if (value.isEmpty) {
+                            settingsViewModel.updateEmployee(customSalary: null);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Vui lòng nhập số hợp lệ')),
+                            );
+                          }
+                        },
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -256,40 +323,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    // Show password dialog first
                     final passwordController = TextEditingController();
                     final password = await showDialog<String>(
                       context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            title: const Text('Nhập mật khẩu quản trị'),
-                            content: TextField(
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                hintText: 'Nhập mật khẩu',
-                              ),
-                              controller: passwordController,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Hủy'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(
-                                    context,
-                                  ).pop(passwordController.text);
-                                },
-                                child: const Text('Gửi'),
-                              ),
-                            ],
+                      builder: (context) => AlertDialog(
+                        title: const Text('Nhập mật khẩu quản trị'),
+                        content: TextField(
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Nhập mật khẩu',
                           ),
+                          controller: passwordController,
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Hủy'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(passwordController.text);
+                            },
+                            child: const Text('Gửi'),
+                          ),
+                        ],
+                      ),
                     );
 
                     if (password == null || password.isEmpty) return;
 
-                    // Verify password
                     final isValid = await Provider.of<SettingsViewModel>(
                       context,
                       listen: false,
@@ -301,16 +363,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return;
                     }
 
-                    // Proceed to open the custom theme dialog
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
-                            (context) => const CustomThemeDialog(
-                              currentPrimary: Colors.blue,
-                              currentAccent: Colors.blueAccent,
-                              currentBackground: Colors.white,
-                            ),
+                        builder: (context) => const CustomThemeDialog(
+                          currentPrimary: Colors.blue,
+                          currentAccent: Colors.blueAccent,
+                          currentBackground: Colors.white,
+                        ),
                       ),
                     );
 

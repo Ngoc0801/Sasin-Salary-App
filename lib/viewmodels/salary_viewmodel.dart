@@ -3,17 +3,19 @@ import 'time_entry_viewmodel.dart';
 import '../models/time_entry.dart';
 import '../utils/number_formatter.dart';
 
-enum Position { kitchen, waiter }
+enum Position { kitchen, waiter, custom } // Thêm Position.custom
 
 class SalaryViewModel extends ChangeNotifier {
   final TimeEntryViewModel timeEntryViewModel;
   Position _selectedPosition = Position.kitchen;
   DateTime _selectedMonth = DateTime.now();
+  double? _customSalary; // Thêm thuộc tính mới để lưu mức lương tùy chỉnh
 
   SalaryViewModel(this.timeEntryViewModel);
 
   Position get selectedPosition => _selectedPosition;
   DateTime get selectedMonth => _selectedMonth;
+  double? get customSalary => _customSalary;
 
   void setPosition(Position position) {
     _selectedPosition = position;
@@ -25,13 +27,17 @@ class SalaryViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Lấy khoảng thời gian từ ngày 7 của tháng hiện tại đến ngày 6 của tháng sau
+  void setCustomSalary(double? salary) {
+    _customSalary = salary;
+    notifyListeners();
+  }
+
+  // Lấy khoảng thời gian từ ngày 1 của tháng hiện tại đến ngày cuối của tháng
   DateTime _getStartDate() {
     return DateTime(_selectedMonth.year, _selectedMonth.month, 1);
   }
 
   DateTime _getEndDate() {
-    // Lấy ngày đầu tháng sau, rồi trừ đi 1 ngày để được ngày cuối tháng hiện tại
     return DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1)
         .subtract(const Duration(days: 1));
   }
@@ -89,7 +95,14 @@ class SalaryViewModel extends ChangeNotifier {
 
   double _calculateEntrySalary(TimeEntry entry) {
     double salaryForEntry = 0;
-    double baseHourlyRate = _selectedPosition == Position.kitchen ? 27000 : 25000;
+    double baseHourlyRate;
+
+    // Sử dụng customSalary nếu Position là custom và customSalary có giá trị
+    if (_selectedPosition == Position.custom && _customSalary != null) {
+      baseHourlyRate = _customSalary!;
+    } else {
+      baseHourlyRate = _selectedPosition == Position.kitchen ? 27000 : 25000;
+    }
 
     DateTime current = entry.checkIn;
     while (current.isBefore(entry.checkOut)) {
@@ -122,7 +135,15 @@ class SalaryViewModel extends ChangeNotifier {
     List<Map<String, dynamic>> details = [];
     for (var entry in _getEntriesForMonth()) {
       double hours = _calculateHours(entry);
-      double baseHourlyRate = _selectedPosition == Position.kitchen ? 27000 : 25000;
+      double baseHourlyRate;
+
+      // Sử dụng customSalary nếu Position là custom và customSalary có giá trị
+      if (_selectedPosition == Position.custom && _customSalary != null) {
+        baseHourlyRate = _customSalary!;
+      } else {
+        baseHourlyRate = _selectedPosition == Position.kitchen ? 27000 : 25000;
+      }
+
       double baseSalary = hours * baseHourlyRate;
       double overtimeSalary = 0;
       double holidaySalary = 0;
