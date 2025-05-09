@@ -68,12 +68,6 @@ class SettingsViewModel extends ChangeNotifier {
     _adminPassword = newPassword;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('adminPassword', newPassword);
-    // Load admin password
-    String? savedPassword = prefs.getString('adminPassword');
-    if (savedPassword != null) {
-      _adminPassword = savedPassword;
-    }
-    
     notifyListeners();
   }
 
@@ -86,32 +80,32 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<void> _loadSettings() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    
+
     // Load employee data
     String? employeeString = prefs.getString('employee');
     if (employeeString != null) {
       _employee = Employee.fromMap(jsonDecode(employeeString));
     }
-    
+
     // Load theme mode
     String? themeString = prefs.getString('themeMode');
     if (themeString != null) {
       _themeMode = ThemeModeOption.values.firstWhere(
         (e) => e.toString() == themeString,
-        orElse: () => ThemeModeOption.white
+        orElse: () => ThemeModeOption.white,
       );
     }
-    
+
     // Load custom themes
     String? customThemesString = prefs.getString('customThemes');
     if (customThemesString != null) {
       List<dynamic> themesList = jsonDecode(customThemesString);
       _customThemes.addAll(themesList.map((e) => CustomTheme.fromMap(e)));
-      
+
       // Remove pink theme if it exists
       _customThemes.removeWhere((theme) => theme.name.toLowerCase().contains('pink'));
     }
-    
+
     // Load selected custom theme
     String? selectedThemeString = prefs.getString('selectedCustomTheme');
     if (selectedThemeString != null) {
@@ -128,13 +122,13 @@ class SettingsViewModel extends ChangeNotifier {
         _backgroundColor = _selectedCustomTheme!.backgroundColor;
       }
     }
-    
+
     notifyListeners();
   }
 
   Future<void> addCustomTheme(CustomTheme theme) async {
     // Validate theme trước khi thêm
-    if (theme.name.isEmpty || 
+    if (theme.name.isEmpty ||
         theme.name.toLowerCase().contains('pink') ||
         theme.primaryColor == Colors.transparent ||
         theme.accentColor == Colors.transparent ||
@@ -151,7 +145,7 @@ class SettingsViewModel extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'customThemes',
-      jsonEncode(_customThemes.map((e) => e.toMap()).toList())
+      jsonEncode(_customThemes.map((e) => e.toMap()).toList()),
     );
     notifyListeners();
   }
@@ -171,7 +165,7 @@ class SettingsViewModel extends ChangeNotifier {
     }
 
     _themeMode = mode;
-    
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('themeMode', mode.toString());
     if (mode == ThemeModeOption.custom && customTheme != null) {
@@ -179,11 +173,10 @@ class SettingsViewModel extends ChangeNotifier {
     } else {
       await prefs.remove('selectedCustomTheme');
     }
-    
+
     notifyListeners();
   }
 
-  // Các phương thức còn lại...
   Future<void> updateEmployee({
     String? name,
     String? email,
@@ -191,6 +184,8 @@ class SettingsViewModel extends ChangeNotifier {
     String? employeeId,
     DateTime? dateOfBirth,
     String? jobType,
+    bool? customSalaryEnabled, // Thêm tham số mới
+    double? customSalary, // Thêm tham số mới
   }) async {
     if (name != null) _employee.name = name;
     if (email != null) _employee.email = email;
@@ -198,7 +193,9 @@ class SettingsViewModel extends ChangeNotifier {
     if (employeeId != null) _employee.employeeId = employeeId;
     if (dateOfBirth != null) _employee.dateOfBirth = dateOfBirth;
     if (jobType != null) _employee.jobType = jobType;
-    
+    if (customSalaryEnabled != null) _employee.customSalaryEnabled = customSalaryEnabled;
+    if (customSalary != null) _employee.customSalary = customSalary;
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('employee', jsonEncode(_employee.toMap()));
     notifyListeners();
@@ -227,11 +224,10 @@ class SettingsViewModel extends ChangeNotifier {
             cardColor: Colors.deepOrange[100],
           );
         case ThemeModeOption.custom:
-          // Fallback nếu màu nền không hợp lệ
-          final bgColor = _backgroundColor.computeLuminance() > 0.1 
-              ? _backgroundColor 
+          final bgColor = _backgroundColor.computeLuminance() > 0.1
+              ? _backgroundColor
               : Colors.white;
-              
+
           return ThemeData.light().copyWith(
             primaryColor: _primaryColor,
             colorScheme: ColorScheme.light(
@@ -239,19 +235,19 @@ class SettingsViewModel extends ChangeNotifier {
               secondary: _accentColor,
               background: bgColor,
               surface: bgColor,
-              onBackground: bgColor.computeLuminance() > 0.5 
-                  ? Colors.black 
+              onBackground: bgColor.computeLuminance() > 0.5
+                  ? Colors.black
                   : Colors.white,
             ),
             scaffoldBackgroundColor: bgColor,
             cardColor: bgColor.withOpacity(0.9),
             dialogBackgroundColor: bgColor.withOpacity(0.95),
             textTheme: ThemeData.light().textTheme.apply(
-              bodyColor: bgColor.computeLuminance() > 0.5 
-                  ? Colors.black 
+              bodyColor: bgColor.computeLuminance() > 0.5
+                  ? Colors.black
                   : Colors.white,
-              displayColor: bgColor.computeLuminance() > 0.5 
-                  ? Colors.black 
+              displayColor: bgColor.computeLuminance() > 0.5
+                  ? Colors.black
                   : Colors.white,
             ),
           );
@@ -286,7 +282,7 @@ class SettingsViewModel extends ChangeNotifier {
             colorScheme: ColorScheme.light(
               primary: Colors.blue,
               secondary: Colors.blueAccent,
-              background: Color(0xFFE1F5FE), // Màu xanh pastel nhạt
+              background: Color(0xFFE1F5FE),
               surface: Color(0xFFE1F5FE),
             ),
             scaffoldBackgroundColor: Color(0xFFE1F5FE),
@@ -299,15 +295,15 @@ class SettingsViewModel extends ChangeNotifier {
               ),
             ),
             bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              backgroundColor: Colors.white, // Màu nền trắng
-              selectedItemColor: Colors.blue, // Màu khi được chọn
-              unselectedItemColor: Colors.grey, // Màu khi không được chọn
+              backgroundColor: Colors.white,
+              selectedItemColor: Colors.blue,
+              unselectedItemColor: Colors.grey,
             ),
           );
       }
     } catch (e) {
       debugPrint('Lỗi khi tạo ThemeData: $e');
-      return ThemeData.light(); // Fallback mặc định nếu có lỗi
+      return ThemeData.light();
     }
   }
 }
