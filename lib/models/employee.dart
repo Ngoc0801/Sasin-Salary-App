@@ -2,18 +2,21 @@ class Employee {
   String name;
   String email;
   String? profileImagePath;
-  String employeeId; // Thêm mã nhân viên
-  DateTime? dateOfBirth; // Thêm ngày tháng năm sinh
-
-  String jobType; // 'kitchen' or 'service'
+  String employeeId;
+  DateTime? dateOfBirth;
+  String jobType;
+  bool customSalaryEnabled; // Thêm trạng thái bật/tắt tùy chỉnh
+  double? customSalary; // Thêm mức lương tùy chỉnh
 
   Employee({
     required this.name,
     required this.email,
     this.profileImagePath,
-    this.employeeId = '', // Giá trị mặc định
-    this.dateOfBirth, // Giá trị mặc định là null
-    this.jobType = 'kitchen', // Mặc định là bếp
+    this.employeeId = '',
+    this.dateOfBirth,
+    this.jobType = 'kitchen',
+    this.customSalaryEnabled = false, // Mặc định là tắt
+    this.customSalary, // Mặc định là null
   });
 
   Map<String, dynamic> toMap() {
@@ -24,6 +27,8 @@ class Employee {
       'employeeId': employeeId,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'jobType': jobType,
+      'customSalaryEnabled': customSalaryEnabled, // Lưu trạng thái
+      'customSalary': customSalary, // Lưu mức lương
     };
   }
 
@@ -33,8 +38,12 @@ class Employee {
       email: map['email'] ?? '',
       profileImagePath: map['profileImagePath'],
       employeeId: map['employeeId'] ?? '',
-      dateOfBirth: map['dateOfBirth'] != null ? DateTime.parse(map['dateOfBirth']) : null,
-      jobType: map['jobType'] ?? 'kitchen', // Mặc định là bếp nếu không có giá trị
+      dateOfBirth: map['dateOfBirth'] != null
+          ? DateTime.parse(map['dateOfBirth'])
+          : null,
+      jobType: map['jobType'] ?? 'kitchen',
+      customSalaryEnabled: map['customSalaryEnabled'] ?? false, // Mặc định
+      customSalary: map['customSalary']?.toDouble(), // Chuyển sang double
     );
   }
 }
